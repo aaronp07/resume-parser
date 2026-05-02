@@ -11,5 +11,12 @@ Build a resume parsing system that extracts key information from uploaded resume
 * Localhost: http://localhost:8080
 
 ### LLM Models
-The code develop for Ollama - Large Language Model 
+The code develop using Ollama - Large Language Model 
 
+#### 1. Pre-requisites
+1. Setup Environment
+Create an environment and activate it
+```
+python -m venv .venv
+.venv\Scripts\Activate
+```
