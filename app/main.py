@@ -42,8 +42,8 @@ async def root() -> dict:
     """Health check endpoint"""
     return {'status': 'ok', 'message': 'Resume Parser API is running'}
 
-@app.post('/', response_model=UploadResume, tags=['Resume'])
-async def upload_resume(file: UploadResume=File(...)) -> UploadResume:
+@app.post('/api/upload', response_model=UploadResume, tags=['Resume'])
+async def upload_resume(file: UploadFile=File(...)) -> UploadResume:
     """
     Upload and parse a resume file (PDF or DOCX)
 

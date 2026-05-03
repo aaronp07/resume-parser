@@ -2,6 +2,7 @@ import os
 import json
 import requests
 import re
+import time
 
 from typing import Any
 from app.utils.logger import get_logger
@@ -65,23 +66,36 @@ class LLMService:
     
     # Constructor
     def __init__(self):
-        self.base_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:5000')
-        self.model = os.getenv('OLLAMA_MODEL', 'mistral')
-        self.timeout = os.getenv('OLLAMA_TIMEOUT', '120')
+        self.base_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
+        self.model = os.getenv('OLLAMA_MODEL', 'phi3')
+        self.timeout = os.getenv('OLLAMA_TIMEOUT', '300')
         logger.info(f'LLM Service constructor initialized - url: {self.base_url}, model: {self.model}')
         self.verify_connection()
 
     # Private helpers
-    def verify_connection(self):
-        """Warn early if Ollama is not reachable"""
-        try:
-            request = requests.get(f'{self.base_url}/api/tags', timeout=5)
-            tags = [check_model('name', '') for check_model in request.json().get('models', [])]
-            logger.info(f'Ollama reachable now and available models: {tags}')
-            if not any(self.model in t for t in tags):
-                logger.warning(f"Model: '{self.model}' not found locally. Run: ollama pull: '{self.model}'")
-        except Exception:
-            logger.warning(f"Could not reach Ollama at '{self.base_url}'. Ensure `ollama serve` is running before uploading resumes")
+    def verify_connection(self, retries: int = 5, delay: int = 2):
+        """Check if Ollama is reachable and model is available with retries"""
+        for attempt in range(retries):
+            try:
+                response = requests.get(f'{self.base_url}/api/tags', timeout=5)
+                if response.status_code != 200:
+                    raise Exception(f"Unexpected status code: {response.status_code}")
+                data = response.json()
+                models = [m.get("name", "") for m in data.get("models", [])]
+                logger.info(f"Ollama reachable now and available models: {models}")
+                if not any(self.model in m for m in models):
+                    logger.warning(f"Model: '{self.model}' not found locally. Run: ollama pull: '{self.model}'")
+                return True
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"[Attempt {attempt+1}] Ollama not reachable yet... retrying")
+            except requests.exceptions.Timeout:
+                logger.warning(f"[Attempt {attempt+1}] Ollama timeout... retrying")
+            except Exception as e:
+                logger.error(f"Ollama check failed: {str(e)}")
+            
+            time.sleep(delay)
+            logger.error(f"Could not reach Ollama at '{self.base_url}' after {retries} attempts")
+        return False
             
     # Public API
     def extract_content(self, resume_text: str) -> dict[str, Any]:
@@ -102,15 +116,19 @@ class LLMService:
         
         payload = {
             'model': self.model,
-            'prompt': f'{SYSTEM_PROMPT} \n\nParse the following resume:\n\n{resume_text}',
-            'stream': False
+            'prompt': f'{SYSTEM_PROMPT} \n\nParse the following resume:\n\n{resume_text[:3000]}',
+            'stream': False,
+            'options': {
+                'temperature': 0,
+                'num_predict': 1200 # Limit the output token
+            }
         }
         
         try:
             response = requests.post(
                 f'{self.base_url}/api/generate',
                 json=payload,
-                timeout=self.timeout
+                timeout=int(self.timeout)
             )
             response.raise_for_status()
         except requests.exceptions.ConnectionError as e:
