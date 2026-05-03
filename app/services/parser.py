@@ -4,7 +4,7 @@ from docx import Document
 from typing import Any
 
 from app.services.llm_service import LLMService
-from app.model import (ContactInfo, WorkExperience, Education, Skills, Certification, ResumeModel)
+from app.models import (ContactInfo, WorkExperience, Education, Skills, Certification, ResumeModel)
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -113,7 +113,7 @@ class ResumeParserService:
                 logger.error(f'PDF extraction failed - {file_path}: {e}')
                 raise ValueError(f'Failed to read PDF file: {e}')
             
-        elif content_type == 'application/docx':
+        else:
             try:
                 doc = Document(str(file_path))
                 content = [para.text for para in doc.paragraphs if para.text.strip()]
@@ -121,5 +121,3 @@ class ResumeParserService:
             except Exception as e:
                 logger.error(f'Document extraction failed - {file_path}: {e}')
                 raise ValueError(f'Failed to read DOCX file: {e}')
-        else:
-            raise ValueError(f'Unsupported content type: {content_type}')
