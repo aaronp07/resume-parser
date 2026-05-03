@@ -3,6 +3,7 @@ import json
 import requests
 import re
 
+from typing import Any
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -61,6 +62,7 @@ Rules:
 
 class LLMService:
     """Handles all interactions with a locally running Ollama instance"""
+    
     # Constructor
     def __init__(self):
         self.base_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:5000')
@@ -124,9 +126,10 @@ class LLMService:
         
         return self.parse_json(raw)
     
-    def _parse_json(self, raw: str) -> dict[str, Any]:
+    # JSON Object
+    def parse_json(self, raw: str) -> dict[str, Any]:
         """
-        Robustly extract a JSON object from the model's raw text output.
+        Robustly extract a JSON object from the model's raw text output
 
         Handles cases where the model wraps JSON in markdown fences or
         adds a preamble sentence before the actual object.
